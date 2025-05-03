@@ -24,40 +24,38 @@ SCROLLY = False
 
 
 EXTENSIONS = {
-    '.py' : { 'lang': 'python', 'comment': lambda line: f"# {line}"},
-    '.js' : { 'lang': 'js', 'comment': lambda line: f"// {line}"},
-    '.css': { 'lang': 'css', 'comment': lambda line: f"/* {line} */"},
-    '.html': { 'lang': 'html', 'comment': lambda line: f"<!-- {line} -->"},
-    '.text': { 'lang': 'text', 'comment': lambda line: f"{line}"},
-    # quick and dirty - need only for html at this point
-    # xxx should probably need to support e.g. .html/j2 and .js.j2
-    '.j2': { 'lang': 'html', 'comment': lambda line: f"<!-- {line} -->"},
+    'requirements.txt': { 'lang': 'python', 'comment': lambda line: f"# {line}"},
+    '.gitignore': { 'lang': 'text', 'comment': lambda line: f"# {line}"},
+    '*.py' : { 'lang': 'python', 'comment': lambda line: f"# {line}"},
+    '*.js' : { 'lang': 'js', 'comment': lambda line: f"// {line}"},
+    '*.css': { 'lang': 'css', 'comment': lambda line: f"/* {line} */"},
+    '*.html': { 'lang': 'html', 'comment': lambda line: f"<!-- {line} -->"},
+    '*.text': { 'lang': 'text', 'comment': lambda line: f"{line}"},
+    '*.html.j2': { 'lang': 'html', 'comment': lambda line: f"<!-- {line} -->"},
 }
-
-def add_lang_index():
-    global EXTENSIONS
-    for ext, info in list(EXTENSIONS.items()):
-        lang = info['lang']
-        if lang not in EXTENSIONS:
-            EXTENSIONS[lang] = info
-
-add_lang_index()
 
 
 def defaults(path, filename, lang, comment):
     """
-    Assign defaults for filename, lang, and comment based on the file extension.
+    Assign defaults for filename, lang, and comment based on path's name
+    In general, all three are optional, however the caller may wish to specify any of these
     """
-    if filename is None:
-        filename = path.name
-    suffix = Path(filename).suffix
-    extension = EXTENSIONS.get(suffix, {}) or EXTENSIONS.get(lang, {})
-    lang = lang or extension.get('lang', 'text')
+    for k, v in EXTENSIONS.items():
+        if path.match(k):
+            def_lang = v['lang']
+            def_comment = v['comment']
+            break
+    else:
+        # no match, so use the default
+        # which should probably be 'text'
+        # but https://github.com/code-hike/codehike/issues/514
+        def_lang = 'python'
+        def_comment = lambda line: f"# {line}"
+    def_filename = path.name
     if comment and isinstance(comment, str):
         comment_str = comment
         comment = lambda line: f"{comment_str} {line}"
-    comment = comment or extension.get('comment', lambda line: line)
-    return filename, lang, comment
+    return filename or def_filename, lang or def_lang, comment or def_comment
 
 
 # https://github.com/code-hike/codehike/issues/507#issuecomment-2821673210
