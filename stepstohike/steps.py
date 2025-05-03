@@ -283,7 +283,7 @@ def tofolders(git_repo: Path, output_root: Path) -> list[Path]:
         if not parent or parent == commit:
             break
         commit = parent
-    # return them in the order that chain0-dirs would expect, older first
+    # return them in the order that chain-dirs would expect, older first
     return folders[::-1]
 
 
