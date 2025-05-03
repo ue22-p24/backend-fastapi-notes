@@ -21,11 +21,14 @@ import click
 
 # when generating for scrolly coding, the output syntax is a little different
 SCROLLY = False
+# by default, we add a (sub)step for each file that is new or that has a change
+# with this set to True, we only add a step if the change is described in a -step.md
+ONLY_CHANGES_WITH_STEP = False
 
 
 EXTENSIONS = {
     'requirements.txt': { 'lang': 'python', 'comment': lambda line: f"# {line}"},
-    '.gitignore': { 'lang': 'text', 'comment': lambda line: f"# {line}"},
+    '.gitignore': { 'lang': 'python', 'comment': lambda line: f"# {line}"},
     '*.py' : { 'lang': 'python', 'comment': lambda line: f"# {line}"},
     '*.js' : { 'lang': 'js', 'comment': lambda line: f"// {line}"},
     '*.css': { 'lang': 'css', 'comment': lambda line: f"/* {line} */"},
@@ -250,7 +253,10 @@ def onedir_diff(dir1, dir2, only_git):
 
         print(f"#### {title}")
 
-    def handle_readme(path, *, new_dir, nth, total=None, old_dir=None):
+    def has_step(path, *, new_dir):
+        return (path.parent / (path.name + '-step.md')).exists()
+
+    def handle_step(path, *, new_dir, nth, total=None, old_dir=None):
         """
         d1=None mean it's a new file in d2
         """
@@ -284,7 +290,7 @@ def onedir_diff(dir1, dir2, only_git):
         topic, label = heading_details(file, nth, total)
         if not SCROLLY:
             print(f"<TableOfContentsItem topic='{topic}' label='{label}'>")
-        handle_readme(path2 / file, old_dir=d1, new_dir=d2, nth=nth, total=total)
+        handle_step(path2 / file, old_dir=d1, new_dir=d2, nth=nth, total=total)
         onefile_diff(path1 / file, path2 / file)
         if not SCROLLY:
             print(f"</TableOfContentsItem>")
@@ -296,10 +302,14 @@ def onedir_diff(dir1, dir2, only_git):
 
         if not SCROLLY:
             print(f"<TableOfContentsItem topic='{topic}' label='{label}'>")
-        handle_readme(path2 / file, new_dir=d2, nth=nth, total=total)
+        handle_step(path2 / file, new_dir=d2, nth=nth, total=total)
         onefile_cat(path2 / file2, added=True)
         if not SCROLLY:
             print(f"</TableOfContentsItem>")
+
+    if ONLY_CHANGES_WITH_STEP:
+        same_files = [f for f in same_files if has_step(path1 / f, new_dir=d2)]
+        new_files = [f for f in new_files if has_step(path2 / f, new_dir=d2)]
 
     total_changes = len(same_files) + len(new_files) + len(deleted_files)
 
@@ -353,13 +363,16 @@ def onedir_cli(dir1, dir2):
 @cli.command('chain-dirs', help="write out diff between a succession of directories")
 @click.option('-s', '--scrolly', is_flag=True, help='Use scrolly mode')
 @click.option('-a', '--all-files', is_flag=True, help="consider all files, not just the ones under git")
+@click.option('-o', '--only-changes-with-step', is_flag=True, help="only show changes with a step.md file")
 @click.argument('dirs', type=Path, nargs=-1)
-def chaindirs_cli(scrolly, all_files, dirs):
+def chaindirs_cli(scrolly, all_files, only_changes_with_step, dirs):
     if len(dirs) < 2:
         print("At least two directories are required for comparison.")
         return
     global SCROLLY
     SCROLLY = scrolly
+    global ONLY_CHANGES_WITH_STEP
+    ONLY_CHANGES_WITH_STEP = only_changes_with_step
 
     chaindirs(dirs, only_git=not all_files)
 
