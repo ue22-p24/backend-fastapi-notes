@@ -1,7 +1,7 @@
-## !intro Chat App step by step
+## !intro a notes app in FastAPI step by step
 
 **Warning**:  
-[the final code is available at this repo](https://github.com/ue22-p24/backend-flask-chatapp-steps)
+[the final code is available at this repo](https://github.com/ue22-p24/backend-fastapi-notes-steps)
 (as well as all the steps in the successive commits)
 
 so, our goal here is to show **why** we're doing things, and **in what order**  
@@ -14,10 +14,22 @@ and that's not the goal here :)
 
 the starter code in step 00 is the basic FastAPI `hello world` app
 
-```python app.py
-!from ../app-00.py
+```python main.py
+!from ../main-00.py
 ```
 
+## !!steps 01 (1/2): creating a database with sqlmodel using a lifespan
+### 00 -> 01 - changes in main.py
+#### use a database
+
+we import the `sqlmodel` module; and in order to create the database, we define the `lifespan` function.
+
+FastAPI expects this function to be a generator function; this allows to define the application prolog and epilog
+(the prolog is executed before the first `yield` statement, and the epilog is executed after that point)
+
+Note how the `app` variable is created by passing the `lifespan` function to the `FastAPI` constructor.
+
+With this version, the database is created and populated when the application starts (although at this point the database is empty)
 ```python ! main.py
 # !className(1) separator
 # !diff(3:4) +
@@ -51,6 +63,12 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/")
 ```
 
+## !!steps 01 (2/2): creating a database with sqlmodel using a lifespan
+### 00 -> 01 - changes in requirements.txt
+#### add sqlmodel to the requirements
+
+actually `requiremnts.txt` is a convenience only, to let people know what is needed to run the code  
+a real application would probably use a `pyprojcet.toml` file to manage dependencies, but let's keep it simple for now
 ```text ! requirements.txt
 !className(1) separator
 !diff(3:3) +
