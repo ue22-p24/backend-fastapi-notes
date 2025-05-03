@@ -10,8 +10,7 @@ const nextConfig = {
   pageExtensions: ["js", "jsx", "mdx", "ts", "tsx"],
   // Optionally, add any other Next.js config below
   // when deploying on GitHub Pages we end up under
-  // https://ue22-p24.github.io/backend-flask-chatapp/
-  basePath: isProd ? "/backend-flask-chatapp" : "",
+  basePath: isProd ? "/backend-fastapi-notes" : "",
 }
 
 /** @type {import('codehike/mdx').CodeHikeConfig} */

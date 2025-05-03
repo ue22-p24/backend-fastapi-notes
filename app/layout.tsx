@@ -5,8 +5,8 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "a Flask chat app",
-  description: "Flask + Sqlite + SocketIO",
+  title: "a FastAPI notes app",
+  description: "FastAPI + Sqlite + WebSocket",
 }
 
 export default function RootLayout({
