@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "npx serve@latest out",
     "local-prefix": "(cd out; rm -f backend-fastapi-notes && ln -s . backend-fastapi-notes)",
+    "clean": "rm -rf .next && echo 'Cleaned build cache.'",
     "lint": "next lint"
   },
   "dependencies": {
