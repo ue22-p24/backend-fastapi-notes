@@ -32,22 +32,14 @@ By default this uses port 8000, so no need to specify it even on MacOS (where po
 
 ### some illustrations
 
-![](front-users.excalidraw.svg)
-![](socketio.excalidraw.svg)
+here's how the whole system could be split into three different services
 
-### after thoughts
+![](front-notes.excalidraw.svg)
 
-it seems that the choice of our endpoints is not necessarily in line with common practice;
-the following renaming has been suggested:
+- `front.notes.io` serves only the frondend (i.e. HTML, CSS, JS)
+- `api.notes.io` serves the API and outputs JSON data
+- `db.notes.io` serves the database, and talks SQL; only the API service is supposed to access it
 
-- `/api/messages/1/` to send a message from user 1, with the other message fields (like `recipient_id`)
-  passed in the POST JSON data
+here's a small figure that outlines the pro of websockets over regular HTTP traffic
 
-
-### further work
-
-from this, you can now improve this code to support actual (multi-people) rooms;
-2 levels of involvement can be envisioned
-
-1. Just write the steps that would be needed, in mush the same way as above
-1. and/or if you're up for it, go as far as implementing it
+![](websocket.excalidraw.svg)
