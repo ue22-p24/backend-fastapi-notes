@@ -226,7 +226,7 @@ def get_notes(session: SessionDep) -> list[Note]:
     return notes
 ```
 
-## !!steps 02c: GET /api/notes/{i} endpoint
+## !!steps 02c: GET /api/notes/id endpoint
 ### 02b -> 02c - changes in main.py
 #### how to get all the details on a specific note
 
@@ -305,21 +305,42 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 this new `/front/notes/` endpoint will return a HTML page, which is rendered from a Jinja template
 
+### templating
+
 worth being noted here, is the way the data is passed from Python to the template, by setting the `context` parameter of the `render_template` function
+
+### fetching data
+
+another important point is this:  
+for fetching the list of notes, we could have gotten it from the database directly, using this code
+
+```python
+def notes_page(request: Request, session: SessionDep):
+    notes = session.exec(select(Note)).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="notes.html.j2",
+        context={"notes": notes})
+```
+
+and that would have worked well  
+however we choose to use the `/api/notes` endpoint instead, which is a bit more complex,
+but allows for better flexibility in the long run, especially because the first step for scaling up will be to separate, on the one hand, the service that serves the frontend, and on the other hand the API service itself (and the DB service as well, for that matter)
 ```python ! main.py
 # !className(1) separator
 # !diff(2:2) -
 # !diff(3:3) +
-# !className(6) separator
-# !diff(10:12) +
-# !className(15) separator
-# !diff(19:32) +
+# !diff(6:7) +
+# !diff(11:13) +
+# !className(16) separator
+# !diff(20:39) +
 ........
 VERSION = "03a"
 VERSION = "03b"
 from contextlib import asynccontextmanager
 from typing import Annotated
-........
+import requests
+
 from fastapi import FastAPI
 from fastapi import Depends
 from fastapi.staticfiles import StaticFiles
@@ -341,7 +362,13 @@ http :8000/front/notes
 """
 @app.get("/front/notes", response_class=HTMLResponse)
 def notes_page(request: Request, session: SessionDep):
-    notes = session.exec(select(Note)).all()
+    # get the notes through the API, not directly from the database
+    base_url = request.url.scheme + "://" + request.url.netloc
+    url = base_url + "/api/notes"
+    response = requests.get(url)
+    if not (200 <= response.status_code < 300):
+        raise Exception(f"Error {response.status_code} while getting notes")
+    notes = response.json()
     return templates.TemplateResponse(
         request=request,
         name="notes.html.j2",
@@ -427,7 +454,8 @@ another variable to the template context; this is used in the `.j2` template
 # !diff(18:18) +
 # !className(21) separator
 # !diff(25:25) -
-# !diff(26:26) +
+# !diff(29:29) -
+# !diff(30:30) +
 ........
 VERSION = "03b"
 VERSION = "04"
@@ -449,6 +477,10 @@ async def root():
 """
 http :8000/api/notes title="Devoirs" description="TP Backend"
 ........
+    response = requests.get(url)
+    if not (200 <= response.status_code < 300):
+        raise Exception(f"Error {response.status_code} while getting notes")
+    notes = response.json()
     return templates.TemplateResponse(
         request=request,
         name="notes.html.j2",
@@ -464,8 +496,6 @@ It's cool to be able to create a note, but we also want to be able to modify it
 
 it is the purpose of this new `PATCH` endpoint
 
-You can use it with `http` like shown in the comment above the endpoint
-
 Please note in this code:
 
 - the use of the `Body` annotation; this means that the `payload` argument is
@@ -474,7 +504,6 @@ Please note in this code:
   FastAPI will automatically check that the incoming data is consistent with the
   `Note` class, and will return a 422 error if it is not
 - also interesting, this line  
-
   `db_note.sqlmodel_update(payload.model_dump(exclude_unset=True))`  
   which allow us to safely update the note with the new values;  
   compare this with a tedious code were we would consider each field one by one,
@@ -537,6 +566,38 @@ def update_note(
     session.refresh(db_note)
     # return the updated note
     return db_note
+```
+
+## !!steps 06: clicking done is published to the backend
+### 06 : new file update-backend.js
+#### a JS script to update the backend
+
+here we define a (globally visible) function `note_done_changed`; its purpose is to be bound to the `done` checkbox of each note in the UI
+
+and as you can see its job is simply to post a `PATCH` api request to the
+backend, with the new value of the `done` checkbox
+```js ! update-backend.js
+// !diff(1:20) +
+// the callback attached to clicking the "done" checkbox
+// it is used verbatim in the HTML template
+async function note_done_changed(elt, nodeId) {
+    const done = elt.checked
+    const url = `/api/notes/${nodeId}`
+    const data = { done: done }
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    })
+    if (response.ok) {
+      const data = await response.json()
+      console.log(`${url} returned`, data)
+    } else {
+      console.error("Error updating note done status:", response.statusText)
+    }
+  }
 ```
 
 
