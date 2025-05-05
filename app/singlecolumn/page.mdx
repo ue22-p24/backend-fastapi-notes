@@ -26,7 +26,7 @@ fastapi run --reload
 
 By default this uses port 8000, so no need to specify it even on MacOS (where port 5000, the Flask default, is used by a system service)
 
-<TableOfContentsItem topic='step 01a -  using a database' label='01a using a database'>
+<TableOfContentsItem topic='step 01a -  using a database' label='01a using a database' tooltip='changes in ./main.py'>
 ### 00 -> 01a - changes in main.py
 #### create a database with sqlmodel using a lifespan
 
@@ -74,7 +74,7 @@ app = FastAPI(lifespan=lifespan)
 ```
 
 </TableOfContentsItem>
-<TableOfContentsItem topic='step 01b -  a DB session' label='01b a DB session'>
+<TableOfContentsItem topic='step 01b -  a DB session' label='01b a DB session' tooltip='changes in ./main.py'>
 ### 01a -> 01b - changes in main.py
 #### defining SessionDep for interacting with the DB
 
@@ -122,7 +122,7 @@ app = FastAPI(lifespan=lifespan)
 ```
 
 </TableOfContentsItem>
-<TableOfContentsItem topic='step 02a -  POST /api/notes to create notes' label='02a POST /api/notes to create notes'>
+<TableOfContentsItem topic='step 02a -  POST /api/notes to create notes' label='02a POST /api/notes to create notes' tooltip='changes in ./main.py'>
 ### 01b -> 02a - changes in main.py
 #### a table to store notes, and an API endpoint to create them
 
@@ -190,7 +190,7 @@ def create_note(note: Note, session: SessionDep) -> Note:
 ```
 
 </TableOfContentsItem>
-<TableOfContentsItem topic='step 02b -  GET /api/notes endpoint' label='02b GET /api/notes endpoint'>
+<TableOfContentsItem topic='step 02b -  GET /api/notes endpoint' label='02b GET /api/notes endpoint' tooltip='changes in ./main.py'>
 ### 02a -> 02b - changes in main.py
 #### is that simple or what ?
 
@@ -230,7 +230,7 @@ def get_notes(session: SessionDep) -> list[Note]:
 ```
 
 </TableOfContentsItem>
-<TableOfContentsItem topic='step 02c -  GET /api/notes/{i} endpoint' label='02c GET /api/notes/{i} endpoint'>
+<TableOfContentsItem topic='step 02c -  GET /api/notes/{i} endpoint' label='02c GET /api/notes/{i} endpoint' tooltip='changes in ./main.py'>
 ### 02b -> 02c - changes in main.py
 #### how to get all the details on a specific note
 
@@ -263,9 +263,9 @@ def get_note(note_id: int, session: SessionDep) -> Note | None:
 ```
 
 </TableOfContentsItem>
-<TableOfContentsItem topic='step 03a -  expose /static/ folder with the CSS style' label='03a expose /static/ folder with the CSS style'>
+<TableOfContentsItem topic='step 03a -  expose static files' label='03a expose static files' tooltip='changes in ./main.py'>
 ### 02c -> 03a - changes in main.py
-#### how to expose static files
+#### expose /static/ folder with the CSS style
 
 ok so at this point we want to expose a new endpoint, `/front/notes`, which will
 return the HTML page to display, and later on interact with, the notes.
@@ -305,7 +305,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 ```
 
 </TableOfContentsItem>
-<TableOfContentsItem topic='step 03b - 1/2 GET /front/notes returns templated HTML' label='03b GET /front/notes returns templated HTML'>
+<TableOfContentsItem topic='step 03b - 1/2 GET /front/notes returns templated HTML' label='03b GET /front/notes returns templated HTML' tooltip='changes in ./main.py'>
 ### 03a -> 03b - changes in main.py
 #### serve a HTML page from a Jinja template
 
@@ -355,7 +355,7 @@ def notes_page(request: Request, session: SessionDep):
 ```
 
 </TableOfContentsItem>
-<TableOfContentsItem topic='step 03b - 2/2 GET /front/notes returns templated HTML' label='03b - 2/2'>
+<TableOfContentsItem topic='step 03b - 2/2 GET /front/notes returns templated HTML' label='03b - 2/2' tooltip='new file ./templates/notes.html.j2'>
 ### 03b : new file notes.html.j2
 #### a Jinja template for notes
 
@@ -410,7 +410,7 @@ We can also see in this example a use of a conditional statement.
 ```
 
 </TableOfContentsItem>
-<TableOfContentsItem topic='step 04 -  redirect / to /front/notes' label='04 redirect / to /front/notes'>
+<TableOfContentsItem topic='step 04 -  redirect / to /front/notes' label='04 redirect / to /front/notes' tooltip='changes in ./main.py'>
 ### 03b -> 04 - changes in main.py
 #### a simple redirect
 
@@ -465,7 +465,7 @@ http :8000/api/notes title="Devoirs" description="TP Backend"
 ```
 
 </TableOfContentsItem>
-<TableOfContentsItem topic='step 05 -  PATCH /api/notes endpoint to change a note' label='05 PATCH /api/notes endpoint to change a note'>
+<TableOfContentsItem topic='step 05 -  PATCH /api/notes endpoint to change a note' label='05 PATCH /api/notes endpoint to change a note' tooltip='changes in ./main.py'>
 ### 04 -> 05 - changes in main.py
 #### allow callers to modify a note
 

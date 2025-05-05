@@ -258,9 +258,9 @@ def get_note(note_id: int, session: SessionDep) -> Note | None:
     return note
 ```
 
-## !!steps 03a: expose /static/ folder with the CSS style
+## !!steps 03a: expose static files
 ### 02c -> 03a - changes in main.py
-#### how to expose static files
+#### expose /static/ folder with the CSS style
 
 ok so at this point we want to expose a new endpoint, `/front/notes`, which will
 return the HTML page to display, and later on interact with, the notes.
