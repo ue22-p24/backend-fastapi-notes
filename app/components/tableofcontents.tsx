@@ -43,7 +43,7 @@ const TableOfContents: FC<Props> = () => {
 
       return {
         topic: el.getAttribute('id')!,
-        tooltip: el.getAttribute('tooltip')!,
+        tooltip: el.getAttribute('data-tooltip')!,
         boundingTop,
         isActive: index === 0,
       }

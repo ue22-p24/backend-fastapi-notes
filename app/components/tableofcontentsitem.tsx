@@ -14,7 +14,7 @@ interface Props {
 const TableOfContentsItem: FC<Props> = ({ topic, label, tooltip, children }) => {
   return (
     // keep as is
-    <section id={label} className='section-heading' tooltip={tooltip}>
+    <section id={label} className='section-heading' data-tooltip={tooltip}>
       <h2>{topic}</h2>
       <div>{children}</div>
     </section>
