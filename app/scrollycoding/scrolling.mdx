@@ -880,6 +880,190 @@ def update_note(
     if not db_note:
 ```
 
+## !!steps 11a (1/2): the WebsocketBroadcaster class
+### 10b -> 11a - changes in <code>main.py</code>
+#### create a broadcaster instance
+
+our application needs to maintain a list of connected clients, so the main program creates one instance of the `WebSocketBroadcaster` class - this is known as a singleton pattern.
+
+next we'll see how to take advantage of this instance for reacting on incoming websocket connections
+```python ! main.py
+# !className(1) separator
+# !diff(2:2) -
+# !diff(3:3) +
+# !className(6) separator
+# !diff(10:15) +
+........
+VERSION = "10b"
+VERSION = "11a"
+from contextlib import asynccontextmanager
+from typing import Annotated
+........
+from sqlmodel import Session
+from sqlmodel import Field
+from sqlmodel import select
+
+from broadcaster import WebSocketBroadcaster
+
+# create a singleton object
+websocket_broadcaster = WebSocketBroadcaster()
+
+SQLITE_URL = f"sqlite:///notes.db"
+engine = create_engine(SQLITE_URL)
+```
+
+## !!steps 11a (2/2): the WebsocketBroadcaster class
+### 11a : new file <code>broadcaster.py</code>
+#### a broadcaster class
+
+for starters, we define in `broadcaster.py` a class `WebSocketBroadcaster`, that will be in charge of
+
+- registering all the connected clients (i.e. browsers)
+- broadcasting messages to all the clients
+- remove then ones that are disconnected
+
+we will see in a bit how this is used in the application
+```python ! broadcaster.py
+# !diff(1:34) +
+from typing import Literal
+
+import asyncio
+
+from fastapi import WebSocket
+
+Action = Literal["create", "update", "delete"]
+
+class WebSocketBroadcaster:
+    """
+    registers active websocket connections
+    and broadcasts messages to all of them
+    """
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    # cannot import Note here, to avoid circular import
+    async def broadcast(self, action: Action, note: "Note"):
+        payload = { "action": action, "note": dict(note) }
+        coros = [ws.send_json(payload) for ws in self.active_connections]
+        results = await asyncio.gather(*coros, return_exceptions=True)
+
+        # Clean up any that failed
+        for ws, result in zip(self.active_connections.copy(), results):
+            if isinstance(result, Exception):
+                self.disconnect(ws)
+```
+
+## !!steps 11b: /ws endpoint
+### 11a -> 11b - changes in <code>main.py</code>
+#### the /ws endpoint
+
+so far our application has several endpoints that are all pure HTTP endpoints -
+they react to GET, POST and similar verbs;  
+when it comes to websockets, things are a bit different, there is no verb, and
+the connection is kept open for a long time so the endpoint has a rather
+different structure, primarily it describes the behaviour of the server **during
+the whole connection lifetime**, rather than just the one request and one
+response that we have seen so far
+
+so here, we basically say this:  
+each time a browser connects to this `/ws/` endpoint:
+- first we register the client in our broadcaster instance
+- then we keep the connection open indefinitely, and we wait for messages from the client
+
+it turns out in our application, we use websockets **only** as a back channel to
+send messages from the server to the client, so we don't need to do anything
+with the messages that are sent by the client
+```python ! main.py
+# !className(1) separator
+# !diff(2:2) -
+# !diff(3:3) +
+# !className(6) separator
+# !diff(10:10) +
+# !className(13) separator
+# !diff(17:27) +
+........
+VERSION = "11a"
+VERSION = "11b"
+from contextlib import asynccontextmanager
+from typing import Annotated
+........
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
+from fastapi import Body
+from fastapi import WebSocket, WebSocketDisconnect
+from sqlmodel import SQLModel, create_engine
+from sqlmodel import Session
+........
+    session.delete(db_note)
+    session.commit()
+    return db_note
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket_broadcaster.connect(websocket)
+    try:
+        while True:
+            # Optional: handle incoming messages if you want, or just keep alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        websocket_broadcaster.disconnect(websocket)
+```
+
+## !!steps 11c: inject ws-listener.js in template
+### 11c : new file <code>ws-listener.js</code>
+#### the browser listens on the WS channel
+
+in this new JS file, we program the browser: it will initialize a WebSocket
+connection to the server and handle incoming messages; for now in this early
+version, we simply assume incoming messages contain JSON data, so we docode it
+and display it in the console
+
+this new script is then simply included in the HTML template (we omit this diff here)
+
+so at this point, our application has the basic WS infrastructure:
+
+- each time a browser opens the notes page, it connects to the server on the `/ws/` endpoint
+- the server knows the list of all connected clients
+- also the server can detect when a client disconnects
+
+we still need - see next step - to take advantage of that back channel, and to
+have the server notify its clients of all the changes made to the notes
+```js ! ws-listener.js
+// !diff(1:23) +
+document.addEventListener("DOMContentLoaded",
+    // connect to the WebSocket server on page load
+    () => {
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+        ws.onopen = () => {
+            console.log("WebSocket connection opened");
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("Received data:", data);
+        };
+
+        ws.onclose = () => {
+            console.log("WebSocket connection closed");
+        };
+
+        ws.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+    }
+)
+```
+
 
 
 ## !outro conclusion
