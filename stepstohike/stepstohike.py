@@ -255,9 +255,9 @@ def onedir_diff(dir1, dir2, only_git):
             # print(f"## step {d2}{locator}: {dir_readme}")
 
         if d1:
-            print(f"### {d1} -> {d2} - changes in {name}")
+            print(f"### {d1} -> {d2} - changes in <code>{name}</code>")
         else:
-            print(f"### {d2} : new file {name}")
+            print(f"### {d2} : new file <code>{name}</code>")
 
         print(f"#### {title}")
 
