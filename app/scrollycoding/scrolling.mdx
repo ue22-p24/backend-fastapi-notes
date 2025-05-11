@@ -27,7 +27,7 @@ fastapi run --reload
 By default this uses port 8000, so no need to specify it even on MacOS (where port 5000, the Flask default, is used by a system service)
 
 ## !!steps 01a: using a database
-### 00 -> 01a - changes in main.py
+### 00 -> 01a - changes in <code>main.py</code>
 #### create a database with sqlmodel using a lifespan
 
 we import the `sqlmodel` module; and in order to create the database, we define the `lifespan` function.
@@ -74,7 +74,7 @@ app = FastAPI(lifespan=lifespan)
 ```
 
 ## !!steps 01b: a DB session
-### 01a -> 01b - changes in main.py
+### 01a -> 01b - changes in <code>main.py</code>
 #### defining SessionDep for interacting with the DB
 
 this is boilerplate code to expose a session object, which we'll need to
@@ -121,7 +121,7 @@ app = FastAPI(lifespan=lifespan)
 ```
 
 ## !!steps 02a: POST /api/notes to create notes
-### 01b -> 02a - changes in main.py
+### 01b -> 02a - changes in <code>main.py</code>
 #### a table to store notes, and an API endpoint to create them
 
 this is typical code to create a table in a database; note the `table=True` passed to the `Note` class  
@@ -188,7 +188,7 @@ def create_note(note: Note, session: SessionDep) -> Note:
 ```
 
 ## !!steps 02b: GET /api/notes endpoint
-### 02a -> 02b - changes in main.py
+### 02a -> 02b - changes in <code>main.py</code>
 #### is that simple or what ?
 
 we will see later on how to control the fields that are returned in the JSON response
@@ -227,7 +227,7 @@ def get_notes(session: SessionDep) -> list[Note]:
 ```
 
 ## !!steps 02c: GET /api/notes/id endpoint
-### 02b -> 02c - changes in main.py
+### 02b -> 02c - changes in <code>main.py</code>
 #### how to get all the details on a specific note
 
 as you can see, the code is as simple as it gets  
@@ -259,7 +259,7 @@ def get_note(note_id: int, session: SessionDep) -> Note | None:
 ```
 
 ## !!steps 03a: expose static files
-### 02c -> 03a - changes in main.py
+### 02c -> 03a - changes in <code>main.py</code>
 #### expose /static/ folder with the CSS style
 
 ok so at this point we want to expose a new endpoint, `/front/notes`, which will
@@ -300,7 +300,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 ```
 
 ## !!steps 03b (1/2): GET /front/notes returns templated HTML
-### 03a -> 03b - changes in main.py
+### 03a -> 03b - changes in <code>main.py</code>
 #### serve a HTML page from a Jinja template
 
 this new `/front/notes/` endpoint will return a HTML page, which is rendered from a Jinja template
@@ -376,7 +376,7 @@ def notes_page(request: Request, session: SessionDep):
 ```
 
 ## !!steps 03b (2/2): GET /front/notes returns templated HTML
-### 03b : new file notes.html.j2
+### 03b : new file <code>notes.html.j2</code>
 #### a Jinja template for notes
 
 here's the Jinja template for the notes page;  
@@ -430,7 +430,7 @@ We can also see in this example a use of a conditional statement.
 ```
 
 ## !!steps 04: redirect / to /front/notes
-### 03b -> 04 - changes in main.py
+### 03b -> 04 - changes in <code>main.py</code>
 #### a simple redirect
 
 generally, people will just type a URL with the domain name in their browser; i.e.  
@@ -489,7 +489,7 @@ http :8000/api/notes title="Devoirs" description="TP Backend"
 ```
 
 ## !!steps 05: PATCH /api/notes endpoint to change a note
-### 04 -> 05 - changes in main.py
+### 04 -> 05 - changes in <code>main.py</code>
 #### allow callers to modify a note
 
 It's cool to be able to create a note, but we also want to be able to modify it
@@ -569,7 +569,7 @@ def update_note(
 ```
 
 ## !!steps 06: clicking done is published to the backend
-### 06 : new file update-backend.js
+### 06 : new file <code>update-backend.js</code>
 #### a JS script to update the backend
 
 here we define a (globally visible) function `note_done_changed`; its purpose is to be bound to the `done` checkbox of each note in the UI
@@ -598,6 +598,121 @@ async function note_done_changed(elt, nodeId) {
       console.error("Error updating note done status:", response.statusText)
     }
   }
+```
+
+## !!steps 07 (1/2): the UI can create a note
+### 06 -> 07 - changes in <code>notes.html.j2</code>
+#### a new form in the template
+
+This is a typical example of a HTML `<form>` element. As the name suggests, it groups all the input fields that are needed for a specific API call, here a note creation.
+
+Thanks to the JS code added in the same step, clicking the submit button - or hitting the enter key - will trigger the API call that will create a new note.
+
+**note**: you could be tempted to create a new note in the UI upon completion of the API call. However we're not going to do it that way, because later on we will implement a broadcast system where the server will notify all clients of a new note. This way, all clients will be able to see the new note without having to refresh the page.  
+And so in particular, the UI that has created the note will create the corresponding UI element just like any other UI.
+```html ! notes.html.j2
+<!-- !className(1) separator -->
+<!-- !diff(4:12) + -->
+<!-- !className(16) separator -->
+<!-- !diff(19:19) + -->
+........
+<body>
+    <h1>My todo notes v{{version}}</h1>
+    <form id="add-note-form" action="/api/notes" method="POST">
+        <fieldset>
+            <legend>Add a new note</legend>
+            <input type="text" name="title" placeholder="Title" required>
+            <input type="text" name="description" placeholder="Description" required>
+            <button type="submit">Add Note</button>
+        </fieldset>
+    </form>
+
+    <ul class="notes">
+        {% for note in notes %}
+        <li class="note">
+........
+    </ul>
+    <script src="{{ url_for('static', path='/js/update-backend.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/forms-use-json.js') }}"></script>
+</body>
+</html>
+```
+
+## !!steps 07 (2/2): the UI can create a note
+### 07 : new file <code>forms-use-json.js</code>
+#### HTML forms with JSON
+
+HTML forms can have an `action` attribute that points to a URL. When the form is submitted, the browser sends a request to that URL with the form data. The server can then process the data and return a response.
+
+However, the default way for forms to do that relies on older technologies like `application/x-www-form-urlencoded` or `multipart/form-data`. These formats are not as flexible or powerful as JSON.
+
+This script allows you to use JSON to send form data; it is generic and can be used with any form. It uses the `fetch` API to send the data as JSON to the server.
+
+Note the use of the call to `event.preventDefault()` to prevent the default form submission behavior.
+```js ! forms-use-json.js
+// !diff(1:26) +
+// reprogram all forms to send their fields as JSON
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('form').forEach((form) => {
+        const formToJSON = form => Object.fromEntries(new FormData(form))
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault()
+
+          // use the action= attribute of the <form>
+          //  to determine where to send the data
+          const action = form.action
+          const json = formToJSON(form)
+          const response = await fetch(action, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(json),
+          })
+          if (!response.ok) {
+            console.error(`Error submitting form at ${action} : `, response.statusText)
+            return
+          }
+          const decoded = await response.json()
+          console.log("response", decoded)
+        })
+      })
+    })
+```
+
+## !!steps 08: DELETE /api/notes/id
+### 07 -> 08 - changes in <code>main.py</code>
+#### DELETE /api/notes/id endpoint to delete a note
+
+nothing really special here. Just a typical DELETE endpoint that will delete a note from the database.
+```python ! main.py
+# !className(1) separator
+# !diff(2:2) -
+# !diff(3:3) +
+# !className(6) separator
+# !diff(10:23) +
+........
+VERSION = "07"
+VERSION = "08"
+from contextlib import asynccontextmanager
+from typing import Annotated
+........
+    session.refresh(db_note)
+    # return the updated note
+    return db_note
+
+
+"""
+http DELETE :8000/api/notes/3
+"""
+@app.delete("/api/notes/{note_id}")
+def delete_note(note_id: int, session: SessionDep):
+    db_note = session.get(Note, note_id)
+    if not db_note:
+        raise HTTPException(status_code=404, detail=f"Note {note_id} not found")
+    # delete the note
+    session.delete(db_note)
+    session.commit()
+    return db_note
 ```
 
 
