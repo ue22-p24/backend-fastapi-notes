@@ -683,7 +683,8 @@ document.addEventListener("DOMContentLoaded", () => {
 ### 07 -> 08 - changes in <code>main.py</code>
 #### DELETE /api/notes/id endpoint to delete a note
 
-nothing really special here. Just a typical DELETE endpoint that will delete a note from the database.
+nothing really special here. Just a typical DELETE endpoint that will delete a
+note from the database.
 ```python ! main.py
 # !className(1) separator
 # !diff(2:2) -
@@ -713,6 +714,170 @@ def delete_note(note_id: int, session: SessionDep):
     session.delete(db_note)
     session.commit()
     return db_note
+```
+
+## !!steps 09 (1/2): the UI can delete a note
+### 08 -> 09 - changes in <code>update-backend.js</code>
+#### a new function in JS
+
+we define the new function `note_delete` in `update-backend.js` to delete a note.
+
+it simply sends a DELETE request to the backend with the note ID.
+
+```js ! update-backend.js
+// !className(1) separator
+// !diff(5:21) +
+........
+      console.error("Error updating note done status:", response.statusText)
+    }
+  }
+
+
+async function note_delete(elt, nodeId) {
+  const url = `/api/notes/${nodeId}`;
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (response.ok) {
+    const data = await response.json();
+    console.log(`${url} returned`, data);
+  } else {
+    console.error("Error deleting note:", response.statusText);
+  }
+}
+```
+
+## !!steps 09 (2/2): the UI can delete a note
+### 08 -> 09 - changes in <code>notes.html.j2</code>
+#### add a button to delete a note
+
+the HTML template now also create a button to delete the note  
+notice how the note id is passed to function `note_delete`
+```html ! notes.html.j2
+<!-- !className(1) separator -->
+<!-- !diff(5:5) - -->
+<!-- !diff(6:8) + -->
+........
+    <ul class="notes">
+        {% for note in notes %}
+        <li class="note">
+            <div class="title">{{ note.title }}</div>
+            <div class="title">{{ note.title }}
+                <button class="delete-button" onclick="note_delete(this, {{ note.id }})">🗑</button>
+            </div>
+            <div class="line">
+                <span>{{ note.description }}</span>
+                <input type="checkbox" {% if note.done %}checked{%endif%}
+```
+
+## !!steps 10a: fine-grained types NoteCreate NoteUpdate Note
+### 09 -> 10a - changes in <code>main.py</code>
+#### more elaborate typing
+
+until now we had only one `Note` type; in practice it is often useful to define
+several several types for the same entity, because you do not expect all the
+fields to be present in all cases.
+
+for example here what we choose to do is to define:
+
+- `NoteCreate`, the type used for creating a note, that only has a `title` and a `description`;
+  so notes are always created with their `done` field set to `False`;
+- `NoteUpdate`, which contains the same 2 fields augmented with the `done` field; indeed we want it to be possible to change all 3 fields - at some point one will want to change `done` to `True`, and users can also change the title and description;
+- `Note`, the full type that contains all 3 fields plus the `id` field
+```python ! main.py
+# !className(1) separator
+# !diff(2:2) -
+# !diff(3:3) +
+# !className(6) separator
+# !diff(8:10) -
+# !diff(11:21) +
+# !diff(23:25) -
+........
+VERSION = "09"
+VERSION = "10a"
+from contextlib import asynccontextmanager
+from typing import Annotated
+........
+SessionDep = Annotated[Session, Depends(get_session)]
+# for now we'll use a single type for all operations on notes
+# BUT we'll see later on how to improve that
+class Note(SQLModel, table=True):
+# in this version we define several models for a note
+# that describe which fields exactly we want to support / expose
+# in each operation of the API
+class NoteCreate(SQLModel):
+    title: str | None = Field(default=None, description="le titre de la note")
+    description: str | None = Field(default=None, description="Le texte de la note")
+
+class NoteUpdate(NoteCreate):
+    done: bool = Field(default=False, description="La tâche est-elle terminée ?")
+
+class Note(NoteUpdate, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    title: str
+    description: str
+    done: bool = False
+# Create the FastAPI app with the lifespan context manager
+```
+
+## !!steps 10b: use the new types
+### 10a -> 10b - changes in <code>main.py</code>
+#### using the new types
+
+we can now take advantage of these different types to annotate the various methods, and FastAPI will automatically adjust the allowed fields in each request body accordingly
+
+in particular with the choice made above, it is no longer possible to pass a value for `done` at creation time - and this is by design
+```python ! main.py
+# !className(1) separator
+# !diff(2:2) -
+# !diff(3:3) +
+# !className(6) separator
+# !diff(10:10) -
+# !diff(11:11) +
+# !diff(14:15) -
+# !diff(16:18) +
+# !diff(20:21) -
+# !diff(22:23) +
+# !className(26) separator
+# !diff(30:30) -
+# !diff(31:31) +
+........
+VERSION = "10a"
+VERSION = "10b"
+from contextlib import asynccontextmanager
+from typing import Annotated
+........
+"""
+http :8000/api/notes title="Devoirs" description="TP Backend"
+http :8000/api/notes title="Papiers" description="Nouveau Passeport"
+http :8000/api/notes title="Dentiste" description="ouille !" done:=true
+http :8000/api/notes title="Dentiste" description="ouille !"
+"""
+@app.post("/api/notes")
+def create_note(note: Note, session: SessionDep) -> Note:
+    session.add(note)
+def create_note(note: NoteCreate, session: SessionDep) -> Note:
+    db_note = Note.model_validate(note)
+    session.add(db_note)
+    session.commit()
+    session.refresh(note)
+    return note
+    session.refresh(db_note)
+    return db_note
+"""
+http :8000/api/notes
+........
+def update_note(
+    note_id: int,
+    session: SessionDep,
+    payload: Annotated[Note, Body(...)],
+    payload: Annotated[NoteUpdate, Body(...)],
+):
+    db_note = session.get(Note, note_id)
+    if not db_note:
 ```
 
 
