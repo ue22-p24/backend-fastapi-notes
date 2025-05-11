@@ -24,13 +24,14 @@ that you start from the terminal with:
 fastapi run --reload
 ```
 
-By default this uses port 8000, so no need to specify it even on MacOS (where port 5000, the Flask default, is used by a system service)
+By default this uses port 8000, so no need to specify it even on MacOS 
+(where port 5000, the Flask default, is used by a system service)
 
 {{AUTO}}
 
 ## !outro conclusion
 
-### some illustrations
+### splitting into services
 
 here's how the whole system could be split into three different services
 
@@ -40,6 +41,18 @@ here's how the whole system could be split into three different services
 - `api.notes.io` serves the API and outputs JSON data
 - `db.notes.io` serves the database, and talks SQL; only the API service is supposed to access it
 
+### WebSocket pros over HTTP
+
 here's a small figure that outlines the pro of websockets over regular HTTP traffic
 
 ![](websocket.excalidraw.svg)
+
+### SocketIO
+
+FYI it may be even simpler to use a library like [SocketIO](https://socket.io/)
+that abstracts away the details of the underlying protocol (here WebSocket)
+and provides a simple API for real-time communication.  
+For example, our code does not handle reconnections, which is a common issue in real-time
+applications; using SocketIO would take care of that for us.
+
+see e.g. <https://pypi.org/project/fastapi-socketio/> for a library that integrates SocketIO with FastAPI
