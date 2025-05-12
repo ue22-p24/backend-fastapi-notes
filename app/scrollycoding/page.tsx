@@ -37,8 +37,13 @@ export default function Page() {
     <main className="scrollycoding">
       <TableOfContents />
       <Link href="/">Back to top</Link>
-      <h1 className="mt-8">{intro.title}</h1>
-      {intro.children}
+      {/* <h1 className="mt-8">{intro.title}</h1> */}
+      <TableOfContentsItem
+        topic={intro.title || "starter code"}
+        label="start-code"
+        tooltip={intro.title}>
+        {intro.children}
+      </TableOfContentsItem>
       <SelectionProvider className="flex gap-4">
         {/* <div className="flex-1 mt-32 mb-[90vh] ml-2 prose prose-invert"> */}
         <div className="flex-1 mb-[90vh] prose prose-invert">
@@ -66,8 +71,12 @@ export default function Page() {
           </div>
         </div>
       </SelectionProvider>
-      <h2>{outro.title}</h2>
-      {outro.children}
+      <TableOfContentsItem
+        topic={makeTopic(outro.title)}
+        label={makeLabel(outro.title)}
+        tooltip={outro.title}>
+        {outro.children}
+      </TableOfContentsItem>
     </main>
   )
 }
