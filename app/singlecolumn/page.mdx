@@ -1086,6 +1086,279 @@ document.addEventListener("DOMContentLoaded",
 ```
 
 </TableOfContentsItem>
+<TableOfContentsItem topic='step 12 -  the api endpoints broadcast the changes on WS' label='12 the api endpoints broadcast the changes on WS' tooltip='changes in ./main.py'>
+### 11c -> 12 - changes in <code>main.py</code>
+#### changes are broadcast to all clients
+
+now that we have a back channel for the server to talk to clients, let 's use it
+to broadcast changes to all clients
+
+this now is a pretty straightforward change;
+as you can see, the messages that are sent on the ws channel are all of the form
+
+```json
+{
+  "action": "create",   # or "update" or "delete"
+  "note": {
+    ... the details of the note
+  }
+}
+```
+```python main.py
+# !className(1) separator
+# !diff(2:2) -
+# !diff(3:3) +
+# !className(6) separator
+# !diff(10:10) -
+# !diff(11:11) +
+# !diff(16:16) +
+# !className(19) separator
+# !diff(23:23) -
+# !diff(24:24) +
+# !className(28) separator
+# !diff(32:32) +
+# !className(35) separator
+# !diff(39:39) -
+# !diff(40:40) +
+# !diff(47:47) +
+........
+VERSION = "11c"
+VERSION = "12"
+from contextlib import asynccontextmanager
+from typing import Annotated
+........
+http :8000/api/notes title="Dentiste" description="ouille !"
+"""
+@app.post("/api/notes")
+def create_note(note: NoteCreate, session: SessionDep) -> Note:
+async def create_note(note: NoteCreate, session: SessionDep) -> Note:
+    db_note = Note.model_validate(note)
+    session.add(db_note)
+    session.commit()
+    session.refresh(db_note)
+    await websocket_broadcaster.broadcast(action="create", note=db_note)
+    return db_note
+"""
+........
+http PATCH :8000/api/notes/1 description="TP Backend FastAPI"
+"""
+@app.patch("/api/notes/{note_id}", response_model=Note)
+def update_note(
+async def update_note(
+    note_id: int,
+    session: SessionDep,
+    payload: Annotated[NoteUpdate, Body(...)],
+........
+    session.add(db_note)
+    session.commit()
+    session.refresh(db_note)
+    await websocket_broadcaster.broadcast(action="update", note=db_note)
+    # return the updated note
+    return db_note
+........
+http DELETE :8000/api/notes/3
+"""
+@app.delete("/api/notes/{note_id}")
+def delete_note(note_id: int, session: SessionDep):
+async def delete_note(note_id: int, session: SessionDep):
+    db_note = session.get(Note, note_id)
+    if not db_note:
+        raise HTTPException(status_code=404, detail=f"Note {note_id} not found")
+    # delete the note
+    session.delete(db_note)
+    session.commit()
+    await websocket_broadcaster.broadcast(action="delete", note=db_note)
+    return db_note
+```
+
+</TableOfContentsItem>
+<TableOfContentsItem topic='step 13a - 1/2 handle incoming WS messages in the frontend' label='13a handle incoming WS messages in the frontend' tooltip='changes in ./static/js/ws-listener.js'>
+### 12 -> 13a - changes in <code>ws-listener.js</code>
+#### bind the callbacks to events
+
+we can easily  connect the callbacks to the events that we want to listen to
+
+```js ws-listener.js
+// !className(1) separator
+// !diff(5:19) +
+........
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("Received data:", data);
+            // Handle the received data as needed
+            const { action, note } = data;
+            switch (action) {
+                case "create":
+                    createNoteElement(note);
+                    break;
+                case "update":
+                    updateNoteElement(note);
+                    break;
+                case "delete":
+                    deleteNoteElement(note.id);
+                    break;
+                default:
+                    console.warn("Unknown action:", action);
+            }
+        };
+        ws.onclose = () => {
+```
+
+</TableOfContentsItem>
+<TableOfContentsItem topic='step 13a - 2/2 handle incoming WS messages in the frontend' label='13a - 2/2' tooltip='new file ./static/js/clientside-rendering.js'>
+### 13a : new file <code>clientside-rendering.js</code>
+#### the skeleton for actions callbacks
+
+in this first, incomplete step, we create a new JS file in which we create 3
+callback functions that will handle events related to changes in the DB.
+
+like always, this new JS file is also mentioned in the HTML template (not detailed here)
+```js clientside-rendering.js
+// !diff(1:11) +
+function createNoteElement(note) {
+    console.log("Creating note:", note);
+}
+
+function updateNoteElement(note) {
+    console.log("Updating note:", note);
+}
+
+function deleteNoteElement(noteId) {
+    console.log("Deleting note with ID:", noteId);
+}
+```
+
+</TableOfContentsItem>
+<TableOfContentsItem topic='step 13b -  define id=note-{id} to the note &lt;li&gt;' label='13b define id=note-{id} to the note &lt;li&gt;' tooltip='changes in ./templates/notes.html.j2'>
+### 13a -> 13b - changes in <code>notes.html.j2</code>
+#### keep track of note ids in the HTML
+
+with this simple change, we can now keep track of the ids of the notes in the
+HTML tree
+
+this will come in handy in the next steps, when we will need to actually apply
+changes (received on the ws channel) to the corresponding notes in the DOM.
+```html notes.html.j2
+<!-- !className(1) separator -->
+<!-- !diff(4:4) - -->
+<!-- !diff(5:5) + -->
+........
+    <ul class="notes">
+        {% for note in notes %}
+        <li class="note">
+        <li id="note-{{note.id}}" class="note">
+            <div class="title">{{ note.title }}
+                <button class="delete-button" onclick="note_delete(this, {{ note.id }})">🗑</button>
+            </div>
+```
+
+</TableOfContentsItem>
+<TableOfContentsItem topic='step 13c -  CSR on note creation' label='13c CSR on note creation' tooltip='changes in ./static/js/clientside-rendering.js'>
+### 13b -> 13c - changes in <code>clientside-rendering.js</code>
+#### rendering new notes
+
+so, to summarize; at this point:
+
+- when the browser connects to the server, the page rendered by the server is
+  obtained from the template; this is called SSR (Server Side Rendering)
+- however when a new note gets created (either throught the API or by another
+  browser), the server broadcasts the new note to all clients
+
+and so at this point we still have to write the code for the browser to display
+the new note; and this is called CSR (Client Side Rendering)
+
+there is obviously some redundancy here; indeed it is important that the CSR
+code creates a structure that is exactly similar to what is served by SSR in the
+first place
+
+for now, we simply duplicate - or rather, mimick - the SSR code into our `clientside-rendering.js` file
+
+in this step, we address note creation
+```js clientside-rendering.js
+// !className(1) separator
+// !diff(3:3) -
+// !diff(4:18) +
+........
+function createNoteElement(note) {
+    console.log("Creating note:", note);
+    const elt = document.createElement("li");
+    elt.classList.add("note");
+    elt.id = `note-${note.id}`;
+    const html = `
+    <div class="title">${note.title}
+        <button class="delete-button" onclick="note_delete(this, ${note.id})">🗑</button>
+    </div>
+    <div class="line">
+        <span>${note.description}</span>
+        <input type="checkbox" ${note.done ? "checked" : ""}
+        onchange="note_done_changed(this, ${note.id})" />
+    </div>
+`
+    elt.innerHTML = html;
+    document.querySelector("ul.notes").appendChild(elt);
+}
+function updateNoteElement(note) {
+```
+
+</TableOfContentsItem>
+<TableOfContentsItem topic='step 13d -  CSR on note update' label='13d CSR on note update' tooltip='changes in ./static/js/clientside-rendering.js'>
+### 13c -> 13d - changes in <code>clientside-rendering.js</code>
+#### CSR for note updates
+
+this now is about client-side rendering of note updates; this is a tad more
+tricky than pure creation, in particular we're using the fact that notes
+&lt;li&gt; elements have their `id` based on the note DB id, so we can easily
+find the corresponding DOM element to update
+
+```js clientside-rendering.js
+// !className(1) separator
+// !diff(4:4) -
+// !diff(5:13) +
+........
+}
+function updateNoteElement(note) {
+    console.log("Updating note:", note);
+    const id = note.id;
+    const elt = document.querySelector(`#note-${id}`);
+    if (!elt) {
+        console.warn("Note element not found for ID:", id);
+        return;
+    }
+    elt.querySelector(".title").textContent = note.title;
+    elt.querySelector("span").textContent = note.description;
+    elt.querySelector("input[type='checkbox']").checked = note.done ? "checked" : "";
+}
+function deleteNoteElement(noteId) {
+```
+
+</TableOfContentsItem>
+<TableOfContentsItem topic='step 13e -  CSR on note deletion' label='13e CSR on note deletion' tooltip='changes in ./static/js/clientside-rendering.js'>
+### 13d -> 13e - changes in <code>clientside-rendering.js</code>
+#### CSR deletion
+
+and finally we code the way the browser must react upon note deletion; it is an easy task
+
+at this point we have a fully functional app, with which we can safely create,
+update and delete notes in a consistent way across all clients, and ensure we
+always get an accurate view of the state of all notes
+```js clientside-rendering.js
+// !className(1) separator
+// !diff(4:4) -
+// !diff(5:10) +
+........
+}
+function deleteNoteElement(noteId) {
+    console.log("Deleting note with ID:", noteId);
+    const elt = document.querySelector(`#note-${noteId}`);
+    if (elt) {
+        elt.remove();
+    } else {
+        console.warn("Note element not found for ID:", noteId);
+    }
+}
+```
+
+</TableOfContentsItem>
 
 
 ## conclusion

@@ -31,6 +31,20 @@ By default this uses port 8000, so no need to specify it even on MacOS
 
 ## !outro conclusion
 
+and a few words to conclude
+
+### one caveat
+
+as pointed out towards the end, our code still suffers from a few issues; 
+the most important one being maybe the code duplication between the SSR code (the HTML template) 
+and the CSR code (the JS code in the last 3 steps)
+
+one way to circumvent this would be to 
+- send an empty template (just the page outer layout, and just a place holder for the content)
+- and then use WS to notify the newly-connected browser about the content to load
+
+this improvement is left to the reader as an exercise
+
 ### splitting into services
 
 here's how the whole system could be split into three different services
