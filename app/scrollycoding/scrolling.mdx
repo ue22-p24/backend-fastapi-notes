@@ -145,9 +145,9 @@ status code (201)
 # !className(6) separator
 # !diff(9:9) +
 # !className(12) separator
-# !diff(14:20) +
-# !className(23) separator
-# !diff(27:38) +
+# !diff(14:22) +
+# !className(25) separator
+# !diff(29:40) +
 ........
 VERSION = "01b"
 VERSION = "02a"
@@ -161,6 +161,8 @@ SQLITE_URL = f"sqlite:///notes.db"
 engine = create_engine(SQLITE_URL)
 ........
 SessionDep = Annotated[Session, Depends(get_session)]
+# for now we'll use a single type for all operations on notes
+# BUT we'll see later on how to improve that
 class Note(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     title: str
@@ -518,9 +520,7 @@ Please note in this code:
 # !className(6) separator
 # !diff(10:10) +
 # !className(13) separator
-# !diff(15:16) +
-# !className(20) separator
-# !diff(24:46) +
+# !diff(17:39) +
 ........
 VERSION = "04"
 VERSION = "05"
@@ -533,13 +533,6 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Body
 from sqlmodel import SQLModel, create_engine
 from sqlmodel import Session
-........
-SessionDep = Annotated[Session, Depends(get_session)]
-# for now we'll use a single type for all operations on notes
-# BUT we'll see later on how to improve that
-class Note(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    title: str
 ........
         request=request,
         name="notes.html.j2",
